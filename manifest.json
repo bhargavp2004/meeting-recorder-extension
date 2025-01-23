@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Meeting Recorder",
+  "version": "1.0",
+  "description": "Record audio from web-based meetings",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "*://meet.google.com/*",
+    "*://*.zoom.us/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [{
+    "matches": [
+      "*://meet.google.com/*",
+      "*://*.zoom.us/*"
+    ],
+    "js": ["content.js"]
+  }],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

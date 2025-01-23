@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Meeting Recorder</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .status {
+      text-align: center;
+      margin-bottom: 16px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="status" id="status">No meeting detected</div>
+  <button id="startRecord" disabled>Start Recording</button>
+  <button id="stopRecord" disabled>Stop Recording</button>
+  <script src="popup.js"></script>
+</body>
+</html>
