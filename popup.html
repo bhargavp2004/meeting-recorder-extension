@@ -27,10 +27,31 @@
       margin-bottom: 16px;
       color: #475569;
     }
+    .recording-options {
+      margin-bottom: 16px;
+    }
+    .recording-type {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .recording-type input {
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
   <div class="status" id="status">No meeting detected</div>
+  <div class="recording-options">
+    <div class="recording-type">
+      <input type="radio" id="audioOnly" name="recordingType" value="audio" checked>
+      <label for="audioOnly">Audio Only</label>
+    </div>
+    <div class="recording-type">
+      <input type="radio" id="screenWithAudio" name="recordingType" value="screen">
+      <label for="screenWithAudio">Screen with Audio</label>
+    </div>
+  </div>
   <button id="startRecord" disabled>Start Recording</button>
   <button id="stopRecord" disabled>Stop Recording</button>
   <script src="popup.js"></script>

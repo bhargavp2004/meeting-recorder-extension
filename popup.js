@@ -4,21 +4,25 @@ function updatePopupState(recording, isMeeting) {
   const startButton = document.getElementById('startRecord');
   const stopButton = document.getElementById('stopRecord');
   const statusDiv = document.getElementById('status');
+  const recordingOptions = document.querySelectorAll('input[name="recordingType"]');
 
   if (!isMeeting) {
     statusDiv.textContent = 'No meeting detected';
     startButton.disabled = true;
     stopButton.disabled = true;
+    recordingOptions.forEach(option => option.disabled = true);
     return;
   }
 
   if (recording) {
     startButton.disabled = true;
     stopButton.disabled = false;
+    recordingOptions.forEach(option => option.disabled = true);
     statusDiv.textContent = 'Recording...';
   } else {
     startButton.disabled = false;
     stopButton.disabled = true;
+    recordingOptions.forEach(option => option.disabled = false);
     statusDiv.textContent = 'Meeting detected';
   }
 }
@@ -46,9 +50,13 @@ function initializePopup() {
 
     if (isMeeting) {
       startButton.addEventListener('click', () => {
+        const recordingType = document.querySelector('input[name="recordingType"]:checked').value;
         isRecording = true;
         chrome.storage.local.set({ isRecording: true });
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'startRecording' });
+        chrome.tabs.sendMessage(tabs[0].id, { 
+          action: 'startRecording',
+          recordingType: recordingType
+        });
         updatePopupState(true, isMeeting);
       });
 
