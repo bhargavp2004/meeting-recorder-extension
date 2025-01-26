@@ -1,5 +1,7 @@
 let mediaRecorder = null;
 let recordedChunks = [];
+let recognition = null;
+let transcript = '';
 
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -17,12 +19,56 @@ chrome.storage.local.get(['isRecording'], (result) => {
   }
 });
 
+async function initializeSpeechRecognition() {
+  if (!('webkitSpeechRecognition' in window)) {
+    throw new Error('Speech recognition is not supported in your browser.');
+  }
+
+  recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let finalTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += result;
+      }
+    }
+    if (finalTranscript) {
+      const timestamp = new Date().toISOString().slice(11, 19); // Get current time in HH:MM:SS
+      transcript += `[${timestamp}] ${finalTranscript}\n`; // Add timestamp to transcript
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    if (event.error === 'not-allowed') {
+      throw new Error('Microphone access was denied. Please allow microphone access to use the speech recorder.');
+    } else {
+      throw new Error(`Speech recognition error: ${event.error}`);
+    }
+  };
+
+  recognition.onend = () => {
+    // If recording is still active, restart recognition
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      recognition.start();
+    }
+  };
+}
+
 async function startRecording(recordingType) {
   try {
     let stream;
     const options = {
       mimeType: 'video/webm;codecs=vp8,opus'
     };
+
+    // Initialize speech recognition
+    await initializeSpeechRecognition();
+    transcript = ''; // Reset transcript
 
     if (recordingType === 'audio') {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -70,6 +116,7 @@ async function startRecording(recordingType) {
     mediaRecorder.onstop = async () => {
       const mimeType = recordingType === 'audio' ? 'audio/mp3' : 'video/webm';
       const fileExtension = recordingType === 'audio' ? 'mp3' : 'webm';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       
       // Create a blob from the recorded chunks
       const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
@@ -83,19 +130,36 @@ async function startRecording(recordingType) {
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `meeting-recording-${new Date().toISOString()}.${fileExtension}`;
+      a.download = `recording-${timestamp}.${fileExtension}`;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Always download transcript for both audio and screen recording
+      if (transcript.trim()) {
+        // Add recording information to transcript
+        const header = `Recording Session: ${timestamp}\nType: ${recordingType}\n\nTranscript:\n`;
+        const fullTranscript = header + transcript;
+        
+        const transcriptBlob = new Blob([fullTranscript], {type: 'text/plain'});
+        const transcriptUrl = URL.createObjectURL(transcriptBlob);
+        const transcriptLink = document.createElement('a');
+        transcriptLink.href = transcriptUrl;
+        transcriptLink.download = `transcript-${timestamp}.txt`;
+        transcriptLink.click();
+        URL.revokeObjectURL(transcriptUrl);
+      }
       
       recordedChunks = [];
+      transcript = '';
     };
 
     mediaRecorder.start(1000); // Capture in 1-second chunks
+    recognition.start(); // Start speech recognition
     chrome.storage.local.set({ isRecording: true });
   } catch (error) {
     console.error('Error starting recording:', error);
     chrome.storage.local.set({ isRecording: false });
-    throw error; // Re-throw to handle in the popup
+    throw error;
   }
 }
 
@@ -103,13 +167,15 @@ function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
     mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    if (recognition) {
+      recognition.stop();
+    }
     chrome.storage.local.set({ isRecording: false });
   }
 }
 
 async function convertToFinalFormat(blob, recordingType) {
   if (recordingType === 'audio') {
-    // Convert to MP3 using the existing audio conversion logic
     const audioContext = new AudioContext();
     const audioBuffer = await blob.arrayBuffer();
     const audioData = await audioContext.decodeAudioData(audioBuffer);
