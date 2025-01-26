@@ -33,12 +33,11 @@ async function initializeSpeechRecognition() {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        finalTranscript += result;
+        finalTranscript += result + ' '; // Add space after each sentence
       }
     }
     if (finalTranscript) {
-      const timestamp = new Date().toISOString().slice(11, 19); // Get current time in HH:MM:SS
-      transcript += `[${timestamp}] ${finalTranscript}\n`; // Add timestamp to transcript
+      transcript += finalTranscript; // Simply append the transcript without timestamp
     }
   };
 
