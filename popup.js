@@ -32,7 +32,6 @@ function initializePopup() {
   const stopButton = document.getElementById('stopRecord');
   const statusDiv = document.getElementById('status');
 
-  // Get the current tab
   chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
     if (!tabs[0]) {
       updatePopupState(false, false);
@@ -42,7 +41,6 @@ function initializePopup() {
     const url = tabs[0].url;
     const isMeeting = url.includes('meet.google.com') || url.includes('zoom.us');
     
-    // Get the current recording state
     chrome.storage.local.get(['isRecording'], (result) => {
       isRecording = result.isRecording || false;
       updatePopupState(isRecording, isMeeting);
@@ -63,12 +61,22 @@ function initializePopup() {
       stopButton.addEventListener('click', () => {
         isRecording = false;
         chrome.storage.local.set({ isRecording: false });
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'stopRecording' });
-        updatePopupState(false, isMeeting);
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'stopRecording' }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn("Content script is not available. Reinjecting...");
+          }
+          chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            files: ["content.js"]
+          }).then(() => {
+            console.log("Content script reloaded successfully.");
+            updatePopupState(false, isMeeting);
+          }).catch(err => console.error("Failed to reload content script:", err));
+        });
       });
+      
     }
   });
 }
 
-// Initialize as soon as the popup loads
 document.addEventListener('DOMContentLoaded', initializePopup);
